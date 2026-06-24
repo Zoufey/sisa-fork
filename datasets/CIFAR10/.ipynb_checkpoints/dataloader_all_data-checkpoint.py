@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-
+from sklearn.model_selection import train_test_split
 
 BATCH_SIZE = 64 #more balance for gradient updates
 IMAGE_SIZE = 32 # CIFAR-10 is 32x32, better resolution than with 64x64 ( no resizing noise)
