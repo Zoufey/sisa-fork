@@ -1,7 +1,0 @@
-{
-    "nb_train": 45000,
-    "nb_test": 10000,
-    "input_shape": [3, 224, 224],
-    "nb_classes": 10,
-    "dataloader": "dataloader_random10_deletion"
-}

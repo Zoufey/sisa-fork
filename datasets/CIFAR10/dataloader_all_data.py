@@ -106,6 +106,16 @@ x_train, y_train = tf_dataset_to_numpy(train_ds)
 x_val, y_val = tf_dataset_to_numpy(val_ds)
 x_test, y_test = tf_dataset_to_numpy(test_ds)
 
+# Transponieung Daten von (N, H, W, C) zu (N, C, H, W) für PyTorch
+x_train = np.transpose(x_train, (0, 3, 1, 2))  # (N, H, W, C) → (N, C, H, W)
+x_val = np.transpose(x_val, (0, 3, 1, 2))  # (N, H, W, C) → (N, C, H, W)
+x_test = np.transpose(x_test, (0, 3, 1, 2))    # (N, H, W, C) → (N, C, H, W)
+
+y_train = y_train.flatten()  # (N, 1) → (N,)
+y_val = y_val.flatten()  # (N, 1) → (N,)
+y_test = y_test.flatten()    # (N, 1) → (N,)
+
+
 def load(indices, category='train'):
     if category == 'train':
         return x_train[indices], y_train[indices]

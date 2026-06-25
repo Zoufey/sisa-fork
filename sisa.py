@@ -293,13 +293,13 @@ if args.train:
             if sl == args.slices - 1:
                 os.symlink(
                     "{}.pt".format(slice_hash),
-                    "containers/{}/cache/shard-{}:{}.pt".format(
+                    "containers/{}/cache/shard-{}-{}.pt".format(
                         args.container, args.shard, args.label
                     ),
                 )
                 os.symlink(
                     "{}.time".format(slice_hash),
-                    "containers/{}/times/shard-{}:{}.time".format(
+                    "containers/{}/times/shard-{}-{}.time".format(
                         args.container, args.shard, args.label
                     ),
                 )
@@ -307,18 +307,18 @@ if args.train:
         elif sl == args.slices - 1:
             os.symlink(
                 "{}.pt".format(slice_hash),
-                "containers/{}/cache/shard-{}:{}.pt".format(
+                "containers/{}/cache/shard-{}-{}.pt".format(
                     args.container, args.shard, args.label
                 ),
             )
             if not os.path.exists(
-                "containers/{}/times/shard-{}:{}.time".format(
+                "containers/{}/times/shard-{}-{}.time".format(
                     args.container, args.shard, args.label
                 )
             ):
                 os.symlink(
                     "null.time",
-                    "containers/{}/times/shard-{}:{}.time".format(
+                    "containers/{}/times/shard-{}-{}.time".format(
                         args.container, args.shard, args.label
                     ),
                 )
@@ -328,7 +328,7 @@ if args.test:
     # Load model weights from shard checkpoint (last slice).
     model.load_state_dict(
         torch.load(
-            "containers/{}/cache/shard-{}:{}.pt".format(
+            "containers/{}/cache/shard-{}-{}.pt".format(
                 args.container, args.shard, args.label
             )
         )
@@ -360,7 +360,7 @@ if args.test:
     # Save outputs in numpy format.
     outputs = np.array(outputs)
     np.save(
-        "containers/{}/outputs/shard-{}:{}.npy".format(
+        "containers/{}/outputs/shard-{}-{}.npy".format(
             args.container, args.shard, args.label
         ),
         outputs,
