@@ -7,7 +7,7 @@ import numpy as np
 BATCH_SIZE = 64  # --batch_size
 EPOCHS = 30 # --epochs
 LEARNING_RATE = 0.001 # --learning_rate
-OPTIMIZER = "Adam" # --optimizer adam
+OPTIMIZER = "adam" # --optimizer adam
 
 
 IMAGE_SIZE = 32 
@@ -23,7 +23,7 @@ class Model(nn.Module):
     def __init__(self, input_shape, nb_classes, dropout_rate=0.0): # from config file
         super(Model, self).__init__()
         #ResNet18-Modell von torchvision
-        self.model = resnet18(pretrained=False)  # pretrained=False, da von Grund auf trainieren, wie in Baseline
+        self.model = resnet18(weights=False)  # pretrained=False, da von Grund auf trainieren, wie in Baseline
         # --- Anpassung für CIFAR-10 (32x32 Bilder) ---
         # Standard-ResNet18 erwartet 3x224x224, aber CIFAR10 3x32x32.
         # Deswegen muss InputLayer = erste Conv-Layer angepasst werden:
