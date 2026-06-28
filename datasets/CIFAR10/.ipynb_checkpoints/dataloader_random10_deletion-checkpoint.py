@@ -21,8 +21,10 @@ tf.config.experimental.enable_op_determinism()
 
 #Dataset
 #Muss nur delete fuer SISA geladen werden?
-x_train = np.load("C:/Users/sophi/OneDrive/Documents/TH/Bachelorarbeit/Code/notebooks/data/cifar10_split10/x_delete10.npy")
-y_train = np.load("C:/Users/sophi/OneDrive/Documents/TH/Bachelorarbeit/Code/notebooks/data/cifar10_split10/y_delete10.npy")
+x_train = np.load("C:/Users/sophi/OneDrive/Documents/TH/Bachelorarbeit/Code/notebooks/data/cifar10_split10/x_retain10.npy")
+y_train = np.load("C:/Users/sophi/OneDrive/Documents/TH/Bachelorarbeit/Code/notebooks/data/cifar10_split10/y_retain10.npy")
+
+(x_train_original, y_train_original), (x_test, y_test) = keras.datasets.cifar10.load_data()
 
 x_train, x_val, y_train, y_val = train_test_split(
     x_train,

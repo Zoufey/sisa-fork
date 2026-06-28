@@ -48,7 +48,7 @@ if args.shards != None:
         np.save("containers/{}/splitfile.npy".format(args.container), partition)
         requests = np.array([[] for _ in range(args.shards)])
         np.save(
-            "containers/{}/requestfile:{}.npy".format(args.container, args.label),
+            "containers/{}/requestfile-{}.npy".format(args.container, args.label),
             requests,
         )
 
@@ -56,14 +56,14 @@ if args.shards != None:
     else:
 
         def mass(index):
-            if args.distribution.split(":")[0] == "exponential":
+            if args.distribution.split("-")[0] == "exponential":
                 lbd = (
-                    float(args.distribution.split(":")[1])
-                    if len(args.distribution.split(":")) > 1
+                    float(args.distribution.split("-")[1])
+                    if len(args.distribution.split("-")) > 1
                     else -np.log(0.05) / datasetfile["nb_train"]
                 )
                 return np.exp(-lbd * index) - np.exp(-lbd * (index + 1))
-            if args.distribution.split(":")[0] == "pareto":
+            if args.distribution.split("-")[0] == "pareto":
                 a = (
                     float(args.distribution.split(":")[1])
                     if len(args.distribution.split(":")) > 1
@@ -81,8 +81,8 @@ if args.shards != None:
             # Put all points in the top queue.
             bottom_queue = queue.shape[0]  # pylint: disable=unsubscriptable-object
             lim = (
-                int(float(args.algo.split(":")[1]) * datasetfile["nb_train"])
-                if len(args.algo.split(":")) > 1
+                int(float(args.algo.split("-")[1]) * datasetfile["nb_train"])
+                if len(args.algo.split("-")) > 1
                 else int(0.01 * datasetfile["nb_train"])
             )
 
@@ -149,7 +149,7 @@ if args.shards != None:
             np.save("containers/{}/splitfile.npy".format(args.container), partition)
             requests = np.array([[] for _ in range(partition.shape[0])])
             np.save(
-                "containers/{}/requestfile:{}.npy".format(args.container, args.label),
+                "containers/{}/requestfile-{}.npy".format(args.container, args.label),
                 requests,
             )
 
@@ -157,7 +157,7 @@ if args.requests != None:
     if args.distribution == "reset":
         requests = np.array([[] for _ in range(partition.shape[0])])
         np.save(
-            "containers/{}/requestfile:{}.npy".format(args.container, args.label),
+            "containers/{}/requestfile-{}.npy".format(args.container, args.label),
             requests,
         )
     else:
@@ -167,17 +167,17 @@ if args.requests != None:
         )
 
         # Randomly select points to be removed with given distribution at the dataset scale.
-        if args.distribution.split(":")[0] == "exponential":
+        if args.distribution.split("-")[0] == "exponential":
             lbd = (
-                float(args.distribution.split(":")[1])
-                if len(args.distribution.split(":")) > 1
+                float(args.distribution.split("-")[1])
+                if len(args.distribution.split("-")) > 1
                 else -np.log(0.05) / datasetfile["nb_train"]
             )
             all_requests = np.random.exponential(1 / lbd, (args.requests,))
-        if args.distribution.split(":")[0] == "pareto":
+        if args.distribution.split("-")[0] == "pareto":
             a = (
-                float(args.distribution.split(":")[1])
-                if len(args.distribution.split(":")) > 1
+                float(args.distribution.split("-")[1])
+                if len(args.distribution.split("-")) > 1
                 else 1.16
             )
             all_requests = np.random.pareto(a, (args.requests,))
@@ -188,9 +188,8 @@ if args.requests != None:
         # Divide up the new requests among the shards.
         for shard in range(partition.shape[0]):
             requests.append(np.intersect1d(partition[shard], all_requests))
-
         # Update requestfile.
         np.save(
-            "containers/{}/requestfile:{}.npy".format(args.container, args.label),
-            np.array(requests),
+            "containers/{}/requestfile-{}.npy".format(args.container, args.label),
+            np.array(requests, dtype=object),
         )
