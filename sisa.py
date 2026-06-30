@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from torch.nn import CrossEntropyLoss
 from torch.optim import Adam, SGD
-from torch.nn.functional import one_hot
-from sharded import sizeOfShard, getShardHash, fetchShardBatch, fetchTestBatch
+from torch.nn.functional import one_hot,softmax
+from sharded import sizeOfShard, getShardHash, fetchShardBatch, fetchTestBatch, fetchValBatch
 import os
 from glob import glob
 from time import time
@@ -20,6 +20,7 @@ parser.add_argument(
     "--train", action="store_true", help="Perform SISA training on the shard"
 )
 parser.add_argument("--test", action="store_true", help="Compute shard predictions")
+parser.add_argument("--validate", action="store_true", help="Validate the model on the validation set")  ### NEU: --validate Flag
 
 parser.add_argument(
     "--epochs",
@@ -85,6 +86,7 @@ with open(args.dataset) as f:
     datasetfile = json.loads(f.read())
 input_shape = tuple(datasetfile["input_shape"])
 nb_classes = datasetfile["nb_classes"]
+nb_val = datasetfile.get("nb_val", 0)  ### NEU: Lade nb_val aus datasetfile
 
 # Use GPU if available.
 device = torch.device(
@@ -104,6 +106,36 @@ elif args.optimizer == "sgd":
 else:
     raise "Unsupported optimizer"
 
+    
+### NEU: Validierungsfunktion
+def validate(model, val_loader, criterion, device):
+    """Führe Validation auf dem Val-Datensatz durch (für Generatoren)."""
+    model.eval()
+    total_loss = 0
+    correct = 0
+    total = 0
+    num_batches = 0  # Zähle die Anzahl der Batches
+
+    with torch.no_grad():
+        for images, labels in val_loader:
+            gpu_images = torch.from_numpy(images).to(device)
+            gpu_labels = torch.from_numpy(labels).to(device)
+
+            logits = model(gpu_images)
+            loss = criterion(logits, gpu_labels)
+            total_loss += loss.item()
+
+            _, predicted = torch.max(logits.data, 1)
+            total += gpu_labels.size(0)
+            correct += (predicted == gpu_labels).sum().item()
+            num_batches += 1
+
+    # Berechne Durchschnittswerte
+    val_loss = total_loss / num_batches if num_batches > 0 else 0
+    val_accuracy = correct / total if total > 0 else 0
+    return val_loss, val_accuracy
+
+    
 if args.train:
     shard_size = sizeOfShard(args.container, args.shard)
     slice_size = shard_size // args.slices
@@ -111,6 +143,16 @@ if args.train:
         2 * args.slices / (args.slices + 1) * args.epochs / args.slices
     )
     loaded = False
+
+       # --- NEU: Val-Loader initialisieren ---
+    val_loader = None
+    if nb_val > 0:
+        try:
+            val_loader = fetchValBatch(args.container, args.label, args.shard, args.batch_size, args.dataset)
+        except Exception as e:
+            print(f"Fehler beim Laden des Val-Loaders: {e}")
+            print("Validation wird übersprungen.")
+
 
     for sl in range(args.slices):
         # Get slice hash using sharded lib.
@@ -182,6 +224,11 @@ if args.train:
 
             for epoch in range(start_epoch, slice_epochs):
                 epoch_start_time = time()
+                model.train()  ### NEU: Setze Modell in Trainingsmodus
+                # NEU: Variablen für Train Accuracy
+                total_loss = 0
+                correct = 0
+                total = 0
 
                 for images, labels in fetchShardBatch(
                     args.container,
@@ -191,7 +238,7 @@ if args.train:
                     args.dataset,
                     until=(sl + 1) * slice_size if sl < args.slices - 1 else None,
                 ):
-
+                    
                     # Convert data to torch format and send to selected device.
                     gpu_images = torch.from_numpy(images).to(
                         device
@@ -212,6 +259,25 @@ if args.train:
                     optimizer.step()
 
                     train_time += time() - forward_start_time
+                    
+                    # NEU: Train Accuracy berechnen
+                    total_loss += loss.item()
+                    _, predicted = torch.max(logits.data, 1)
+                    total += gpu_labels.size(0)
+                    correct += (predicted == gpu_labels).sum().item()
+
+                # NEU: Train Accuracy pro Epoche ausgeben
+                train_accuracy = correct / total if total > 0 else 0
+                print(f"Epoch {epoch+1}/{slice_epochs} | Train Accuracy: {train_accuracy:.4f}", end="")
+                    
+                # NEU: Validation nach jeder Epoche
+                if val_loader is not None:
+                    model.eval()
+                    val_loss, val_accuracy = validate(model, val_loader, loss_fn, device)
+                    model.train()
+                    print(f" | Val Accuracy: {val_accuracy:.4f}")
+                else:
+                    print()  # Zeilenumbruch, falls keine Validation
 
                 # Create a checkpoint every chkpt_interval.
                 if (
@@ -323,7 +389,18 @@ if args.train:
                     ),
                 )
 
-
+### NEU: Separate Validation (falls --validate Flag gesetzt)
+if args.validate:
+    if nb_val > 0:
+        try:
+            val_loader = fetchValBatch(args.container, args.label, args.shard, args.batch_size, args.dataset)
+            val_loss, val_accuracy = validate(model, val_loader, loss_fn, device)
+            print(f"Validation Accuracy: {val_accuracy:.4f}")
+        except Exception as e:
+            print(f"Fehler bei der Validation: {e}")
+    else:
+        print("Kein Val-Datensatz in datasetfile gefunden. Validation übersprungen.")
+        
 if args.test:
     # Load model weights from shard checkpoint (last slice).
     model.load_state_dict(

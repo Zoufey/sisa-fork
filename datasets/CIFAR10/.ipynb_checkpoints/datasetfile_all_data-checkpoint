@@ -1,5 +1,6 @@
 {
-    "nb_train": 50000,
+    "nb_train": 45000,
+    "nb_val":5000,
     "nb_test": 10000,
     "input_shape": [3, 32, 32],
     "nb_classes": 10,
